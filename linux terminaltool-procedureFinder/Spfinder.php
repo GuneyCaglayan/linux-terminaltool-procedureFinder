@@ -12,35 +12,38 @@ class Spfinder
 
     public function main($argc = 0, $argv = [])
     {
-        $shortopt = "";
-        $longopt = [
-            "path:",
-            "database:"
-        ];
-
-        $options = getopt($shortopt, $longopt);
-        $appPath = $options["path"];
-        $procedureDir = $options["database"];
-
         $usedProcedureList = [];
-        foreach ($appPath as $onePath) {
-            $usedProcedureList = array_merge($usedProcedureList, $this->procedureFinder($onePath));
+        foreach ($argv["path"] as $onePath) {
+            $usedProcedureList = array_merge(
+                $usedProcedureList,
+                $this->procedureFinder("/home/guney/workspace/" . $onePath . "/src/service"));
+            $usedProcedureList = array_merge(
+                $usedProcedureList,
+                $this->procedureFinder("/home/guney/workspace/" . $onePath . "/src/core/service/"));
         }
+
         $usedProcedureList = array_unique($usedProcedureList);
-        $procedureList = $this->procedureList($procedureDir);
+        $procedureList = $this->procedureList($argv["database"]);
 
         $unUsed = array_diff($procedureList, $usedProcedureList);
         $unDefined = array_diff($usedProcedureList, $procedureList);
 
         print_r($unUsed);
         print_r($unDefined);
+        return 0;
     }
 
-    public function procedureList($procedureDir)
+    private function procedureList(string $database): array
     {
         $procedures = [];
-        foreach (new \DirectoryIterator($procedureDir) as $dirInfo) {
-            $procedures[] = $dirInfo->getBasename(".sql");
+        $procedureDir = __DIR__ . "/" . $database . "/procedures";
+
+        foreach (new \DirectoryIterator($procedureDir) as $fileInfo) {
+
+            if ($fileInfo->isDir()) {
+                continue;
+            }
+            $procedures[] = $fileInfo->getBasename(".sql");
         }
         return $procedures;
     }
@@ -110,5 +113,15 @@ class Spfinder
         return $merged;
     }
 }
+
+$shortopt = "";
+$longopt = [
+    "path:",
+    "database:"
+];
+
+$options = getopt($shortopt, $longopt);
+
 $spfinder = new Spfinder();
-$spfinder->main();
+$exitCode = $spfinder->main(count($options), $options);
+exit($exitCode);
